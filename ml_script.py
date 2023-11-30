@@ -1,30 +1,50 @@
-import pandas as pd
+import sqlite3
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 
-# Load data from CSV
-data = pd.read_csv('health_data.csv')
+# Retrieve data from SQLite database
+connection = sqlite3.connect("health_data.db")
+cursor = connection.cursor()
+cursor.execute("SELECT age, cholesterol_level, blood_pressure FROM health_records")
+data = cursor.fetchall()
+connection.close()
 
-# Assume 'sick' column is not present, you can add it based on your criteria
-# For example, if cholesterol_level > threshold, consider the person sick
-threshold = 200
-data['sick'] = (data['cholesterol_level'] > threshold).astype(int)
+# Organize data into features and labels
+features = [(age, cholesterol) for age, cholesterol, _ in data]
+labels = [blood_pressure for _, _, blood_pressure in data]
 
-# Features and target variable
-X = data[['age', 'cholesterol_level']]
-y = data['sick']
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
 
-# Split the dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Feature Scaling
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
-# Train a RandomForestClassifier
-clf = RandomForestClassifier()
-clf.fit(X_train, y_train)
+# Model Selection and Training (Linear Regression example)
+model = LinearRegression()
+model.fit(X_train_scaled, y_train)
 
-# Make predictions on the test set
-y_pred = clf.predict(X_test)
+# Model Evaluation
+y_pred = model.predict(X_test_scaled)
+mse = mean_squared_error(y_test, y_pred)
+print("Mean Squared Error:", mse)
 
-# Evaluate the model
-accuracy = accuracy_score(y_test, y_pred)
-print(f'Accuracy: {accuracy}')
+# Prediction for new data
+# Assuming you have new data
+new_age = 40
+new_cholesterol = 200
+
+# Creating a new data point with the provided values
+new_data_point = [(new_age, new_cholesterol)]
+
+# Scaling the new data point using the previously fitted scaler
+new_data_point_scaled = scaler.transform(new_data_point)
+
+# Making predictions using the trained model
+predicted_blood_pressure = model.predict(new_data_point_scaled)
+
+# Printing the predicted blood pressure
+print("Predicted Blood Pressure:", predicted_blood_pressure)
